@@ -1,0 +1,28 @@
+{
+  "name": "@ryannhg/application-demo",
+  "version": "1.0.0",
+  "description": "A working demo of ryannhg/application.",
+  "main": "index.html",
+  "scripts": {
+    "start": "parcel index.html",
+    "dev": "parcel index.html",
+    "build": "parcel build index.html"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ryannhg/application.git"
+  },
+  "keywords": [
+    "elm",
+    "application"
+  ],
+  "author": "Ryan Haskell-Glatz",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/ryannhg/application/issues"
+  },
+  "homepage": "https://github.com/ryannhg/application#readme",
+  "devDependencies": {
+    "parcel-bundler": "^1.11.0"
+  }
+}
