@@ -11,8 +11,8 @@ This project, `ryannhg/application` is an attempt to preserve the flexibility an
 
 Right now, I'm still exploring the API in the `examples` folder. This is how I'm running things:
 
-1. __`cd examples`__
+1. `cd examples`
 
-1. __`npm install`__
+1. `npm install`
 
-1. __`npm run dev`__
+1. `npm run dev`
