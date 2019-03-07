@@ -7,30 +7,12 @@ Making single page applications in Elm is pretty great! You can create routes an
 
 This project, `ryannhg/application` is an attempt to preserve the flexibility and simplicity of the Elm architecture, while rearranging things so you can more directly see the relationship between your routes and pages.
 
-### Here's an example
+## Local Development
 
-```elm
-module Main exposing (..)
+Right now, I'm still exploring the API in the `examples` folder. This is how I'm running things:
 
-import Application
-import Pages.Home
-import Pages.About
-import Url.Parser as Parser
+1. __`cd examples`__
 
-type Msg
-  = HomeMsg Pages.Home.Msg
-  | AboutMsg Pages.About.Msg
+1. __`npm install`__
 
-main : Application Flags Model Msg
-main =
-    Application.program
-      { routes =
-          [ Parser.map
-              (Pages.Home.route HomeMsg)
-              Parser.top
-          , Parser.map
-              (Pages.About.route AboutMsg)
-              (Parser.s "about")
-          ]
-      }
-```
+1. __`npm run dev`__
