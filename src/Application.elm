@@ -1,5 +1,6 @@
 module Application exposing (program)
 
+import Application.Page exposing (Page)
 import Browser exposing (UrlRequest(..))
 import Browser.Navigation as Nav
 import Html exposing (Html)
@@ -7,9 +8,10 @@ import Url exposing (Url)
 import Url.Parser as Parser exposing (Parser)
 
 
-type alias Model userModel =
+type alias Model userFlags userModel =
     { url : Url
     , key : Nav.Key
+    , flags : userFlags
     , userModel : userModel
     }
 
@@ -20,27 +22,30 @@ type Msg userMsg
     | UrlRequested UrlRequest
 
 
-type alias Routes userModel userMsg =
-    Parser (UserView userModel userMsg -> UserView userModel userMsg) (UserView userModel userMsg)
+type alias UrlParser a =
+    Parser (a -> a) a
 
 
-type Configuration userFlags userModel userMsg
-    = Configuration
-        { routes : List (Routes userModel userMsg)
-        , notFound : UserView userModel userMsg
-        , init : UserInitFunction userFlags userModel userMsg
-        , update : UserUpdateFunction userModel userMsg
-        , subscriptions : UserSubscriptionsFunction userModel userMsg
-        }
+type alias Routes userFlags userModel userMsg =
+    UrlParser (Page userFlags userModel userMsg)
+
+
+type alias Configuration userFlags userModel userMsg =
+    { routes : List (Routes userFlags userModel userMsg)
+    , notFound : Page userFlags userModel userMsg
+    , init : UserInitFunction userFlags userModel userMsg
+    , update : UserUpdateFunction userModel userMsg
+    , subscriptions : UserSubscriptionsFunction userModel userMsg
+    }
 
 
 program :
     Configuration userFlags userModel userMsg
-    -> Program userFlags (Model userModel) (Msg userMsg)
-program (Configuration config) =
+    -> Program userFlags (Model userFlags userModel) (Msg userMsg)
+program config =
     Browser.application
         { init = init config.init
-        , update = update config.update
+        , update = update config.init config.update
         , view = view config.notFound config.routes
         , subscriptions = subscriptions config.subscriptions
         , onUrlChange = UrlChanged
@@ -50,20 +55,25 @@ program (Configuration config) =
 
 
 -- INIT
--- TODO: User might want Url to, but skipping for now
+-- TODO: User might want Url too, but skipping for now
 
 
 type alias UserInitFunction userFlags userModel userMsg =
-    userFlags -> ( userModel, Cmd userMsg )
+    Url -> userFlags -> ( userModel, Cmd userMsg )
 
 
-init : UserInitFunction userFlags userModel userMsg -> userFlags -> Url -> Nav.Key -> ( Model userModel, Cmd (Msg userMsg) )
+init :
+    UserInitFunction userFlags userModel userMsg
+    -> userFlags
+    -> Url
+    -> Nav.Key
+    -> ( Model userFlags userModel, Cmd (Msg userMsg) )
 init userInit flags url key =
     let
         ( userModel, userCmd ) =
-            userInit flags
+            userInit url flags
     in
-    ( Model url key userModel
+    ( Model url key flags userModel
     , Cmd.map UserMsg userCmd
     )
 
@@ -76,11 +86,25 @@ type alias UserUpdateFunction userModel userMsg =
     userMsg -> userModel -> ( userModel, Cmd userMsg )
 
 
-update : UserUpdateFunction userModel userMsg -> Msg userMsg -> Model userModel -> ( Model userModel, Cmd (Msg userMsg) )
-update userUpdate msg model =
+update :
+    UserInitFunction userFlags userModel userMsg
+    -> UserUpdateFunction userModel userMsg
+    -> Msg userMsg
+    -> Model userFlags userModel
+    -> ( Model userFlags userModel, Cmd (Msg userMsg) )
+update userInit userUpdate msg model =
     case msg of
         UrlChanged url ->
-            ( { model | url = url }, Cmd.none )
+            let
+                ( userModel, userCmd ) =
+                    userInit url model.flags
+            in
+            ( { model
+                | url = url
+                , userModel = userModel
+              }
+            , Cmd.map UserMsg userCmd
+            )
 
         UrlRequested urlRequest ->
             case urlRequest of
@@ -110,50 +134,35 @@ type alias Document msg =
     }
 
 
-type alias PageView msg =
-    { title : String
-    , html : Html msg
-    }
-
-
 
 -- VIEW
 
 
-type alias UserView userModel userMsg =
-    userModel -> PageView userMsg
-
-
-routesToView :
-    UserView userModel userMsg
-    -> List (Routes userModel userMsg)
+findPage :
+    List (Routes userFlags userModel userMsg)
     -> Url
-    -> UserView userModel userMsg
-routesToView notFoundView routes url =
+    -> Maybe (Page userFlags userModel userMsg)
+findPage routes url =
     Parser.parse (Parser.oneOf routes) url
-        |> Maybe.withDefault notFoundView
 
 
 view :
-    UserView userModel userMsg
-    -> List (Routes userModel userMsg)
-    -> Model userModel
+    Page userFlags userModel userMsg
+    -> List (Routes userFlags userModel userMsg)
+    -> Model userFlags userModel
     -> Document (Msg userMsg)
 view notFoundView routes model =
     let
-        { title, html } =
-            routesToView
+        page =
+            Maybe.withDefault
                 notFoundView
-                routes
-                model.url
-                model.userModel
+                (findPage routes model.url)
+
+        { title, body } =
+            page.view model.url model.flags model.userModel
     in
     { title = title
-    , body =
-        [ Html.map
-            UserMsg
-            html
-        ]
+    , body = List.map (Html.map UserMsg) body
     }
 
 
@@ -165,6 +174,6 @@ type alias UserSubscriptionsFunction userModel userMsg =
     userModel -> Sub userMsg
 
 
-subscriptions : UserSubscriptionsFunction userModel userMsg -> Model userModel -> Sub (Msg userMsg)
+subscriptions : UserSubscriptionsFunction userModel userMsg -> Model userFlags userModel -> Sub (Msg userMsg)
 subscriptions userSubscriptions model =
     Sub.map UserMsg (userSubscriptions model.userModel)

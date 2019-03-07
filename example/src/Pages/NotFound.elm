@@ -1,4 +1,4 @@
-module Pages.Home exposing (Model, Msg, page)
+module Pages.NotFound exposing (Model, Msg, page)
 
 import Application.Page exposing (Document, StaticPage)
 import Global
@@ -22,6 +22,6 @@ page =
 
 view : Url -> Global.Flags -> Document Msg
 view url flags =
-    { title = "Homepage"
-    , body = [ Html.text "Home" ]
+    { title = "Not found"
+    , body = [ Html.text "Not found" ]
     }

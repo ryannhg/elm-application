@@ -1,25 +1,63 @@
-module Main exposing (main)
+module Main exposing (Model)
 
 import Application
-import Pages.About
+import Application.Page exposing (static)
+import Global
+import Html exposing (Html)
 import Pages.Home
+import Pages.NotFound
+import Url exposing (Url)
 import Url.Parser as Parser
 
 
 type Msg
     = HomeMsg Pages.Home.Msg
-    | AboutMsg Pages.About.Msg
+    | NotFoundMsg Pages.NotFound.Msg
 
 
-main : Application Flags Model Msg
+type Model
+    = NotLoaded
+    | Home Pages.Home.Model
+    | NotFound Pages.NotFound.Model
+
+
+
+-- main =
+--     Html.text "Hello"
+-- MAIN
+-- { routes : List (Routes userFlags userModel userMsg)
+-- , notFound : Page userFlags userModel userMsg
+-- , init : UserInitFunction userFlags userModel userMsg
+-- , update : UserUpdateFunction userModel userMsg
+-- , subscriptions : UserSubscriptionsFunction userModel userMsg
+-- }
+
+
 main =
     Application.program
         { routes =
             [ Parser.map
-                (Pages.Home.route HomeMsg)
+                (static Home HomeMsg Pages.Home.page)
                 Parser.top
-            , Parser.map
-                (Pages.About.route AboutMsg)
-                (Parser.s "about")
             ]
+        , notFound =
+            static NotFound NotFoundMsg Pages.NotFound.page
+        , init = init
+        , update = update
+        , subscriptions = subscriptions
         }
+
+
+init : Url -> Global.Flags -> ( Model, Cmd Msg )
+init url flags =
+    ( NotLoaded, Cmd.none )
+
+
+update : Msg -> Model -> ( Model, Cmd Msg )
+update msg model =
+    ( model, Cmd.none )
+
+
+subscriptions : Model -> Sub Msg
+subscriptions model =
+    Sub.none
