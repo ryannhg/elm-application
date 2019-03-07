@@ -1,9 +1,10 @@
 module Main exposing (Model)
 
 import Application
-import Application.Page exposing (static)
+import Application.Page exposing (sandbox, static)
 import Global
 import Html exposing (Html)
+import Pages.Counter
 import Pages.Home
 import Pages.NotFound
 import Url exposing (Url)
@@ -11,37 +12,40 @@ import Url.Parser as Parser
 
 
 type Msg
-    = HomeMsg Pages.Home.Msg
-    | NotFoundMsg Pages.NotFound.Msg
+    = NoOp
+    | CounterMsg Pages.Counter.Msg
 
 
 type Model
-    = NotLoaded
-    | Home Pages.Home.Model
-    | NotFound Pages.NotFound.Model
+    = Empty ()
+    | Counter Pages.Counter.Model
 
+static =
+    Application.Page.static Empty (always NoOp)
 
-
--- main =
---     Html.text "Hello"
 -- MAIN
--- { routes : List (Routes userFlags userModel userMsg)
--- , notFound : Page userFlags userModel userMsg
--- , init : UserInitFunction userFlags userModel userMsg
--- , update : UserUpdateFunction userModel userMsg
--- , subscriptions : UserSubscriptionsFunction userModel userMsg
--- }
 
 
 main =
     Application.program
         { routes =
-            [ Parser.map
-                (static Home HomeMsg Pages.Home.page)
-                Parser.top
+            [ Parser.map (static Pages.Home.page) Parser.top
+            , Parser.map
+                (sandbox Counter CounterMsg
+                    -- TODO, view case expression should be external...
+                    (\model ->
+                        case model of
+                            Counter inner ->
+                                Just inner
+
+                            _ ->
+                                Nothing
+                    )
+                    Pages.Counter.page
+                )
+                (Parser.s "counter")
             ]
-        , notFound =
-            static NotFound NotFoundMsg Pages.NotFound.page
+        , notFound = static Pages.NotFound.page
         , init = init
         , update = update
         , subscriptions = subscriptions
@@ -50,12 +54,27 @@ main =
 
 init : Url -> Global.Flags -> ( Model, Cmd Msg )
 init url flags =
-    ( NotLoaded, Cmd.none )
+    ( Empty (), Cmd.none )
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
-update msg model =
-    ( model, Cmd.none )
+update msg_ model_ =
+    case ( msg_, model_ ) of
+        -- Static pages 
+        ( NoOp, _ ) ->
+            ( model_, Cmd.none )
+
+        -- Counter
+        ( CounterMsg msg, Counter model ) ->
+            Application.Page.updateSandbox
+                Counter
+                CounterMsg
+                msg
+                model
+                Pages.Counter.page
+
+        ( CounterMsg _, _ ) ->
+            ( model_, Cmd.none )
 
 
 subscriptions : Model -> Sub Msg

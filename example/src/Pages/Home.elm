@@ -2,7 +2,8 @@ module Pages.Home exposing (Model, Msg, page)
 
 import Application.Page exposing (Document, StaticPage)
 import Global
-import Html exposing (Html)
+import Html exposing (..)
+import Html.Attributes exposing (href)
 import Url exposing (Url)
 
 
@@ -23,5 +24,12 @@ page =
 view : Url -> Global.Flags -> Document Msg
 view url flags =
     { title = "Homepage"
-    , body = [ Html.text "Home" ]
+    , body = 
+    [ 
+        div [] 
+        [ h1 [] [ text "Home" ] 
+
+        , a [ href "/counter" ] [ text "Counter" ]
+        ]
+    ]
     }

@@ -44,9 +44,9 @@ program :
     -> Program userFlags (Model userFlags userModel) (Msg userMsg)
 program config =
     Browser.application
-        { init = init config.init
-        , update = update config.init config.update
-        , view = view config.notFound config.routes
+        { init = init config.routes config.notFound config.init
+        , update = update config.routes config.notFound config.init config.update
+        , view = view config.routes config.notFound
         , subscriptions = subscriptions config.subscriptions
         , onUrlChange = UrlChanged
         , onUrlRequest = UrlRequested
@@ -63,18 +63,28 @@ type alias UserInitFunction userFlags userModel userMsg =
 
 
 init :
-    UserInitFunction userFlags userModel userMsg
+    List (Routes userFlags userModel userMsg)
+    -> Page userFlags userModel userMsg
+    -> UserInitFunction userFlags userModel userMsg
     -> userFlags
     -> Url
     -> Nav.Key
     -> ( Model userFlags userModel, Cmd (Msg userMsg) )
-init userInit flags url key =
+init routes notFoundPage userInit flags url key =
     let
         ( userModel, userCmd ) =
             userInit url flags
+
+        ( loadedUserModel, otherUserCmd ) =
+            findPage routes url notFoundPage
+                |> .init
+                |> (\f -> f userModel url flags)
     in
-    ( Model url key flags userModel
-    , Cmd.map UserMsg userCmd
+    ( Model url key flags loadedUserModel
+    , Cmd.batch <|
+        List.map
+            (Cmd.map UserMsg)
+            [ userCmd, otherUserCmd ]
     )
 
 
@@ -87,22 +97,23 @@ type alias UserUpdateFunction userModel userMsg =
 
 
 update :
-    UserInitFunction userFlags userModel userMsg
+    List (Routes userFlags userModel userMsg)
+    -> Page userFlags userModel userMsg
+    -> UserInitFunction userFlags userModel userMsg
     -> UserUpdateFunction userModel userMsg
     -> Msg userMsg
     -> Model userFlags userModel
     -> ( Model userFlags userModel, Cmd (Msg userMsg) )
-update userInit userUpdate msg model =
+update routes notFoundPage userInit userUpdate msg model =
     case msg of
         UrlChanged url ->
             let
                 ( userModel, userCmd ) =
-                    userInit url model.flags
+                    findPage routes url notFoundPage
+                        |> .init
+                        |> (\f -> f model.userModel url model.flags)
             in
-            ( { model
-                | url = url
-                , userModel = userModel
-              }
+            ( { model | userModel = userModel, url = url }
             , Cmd.map UserMsg userCmd
             )
 
@@ -141,22 +152,22 @@ type alias Document msg =
 findPage :
     List (Routes userFlags userModel userMsg)
     -> Url
-    -> Maybe (Page userFlags userModel userMsg)
-findPage routes url =
+    -> Page userFlags userModel userMsg
+    -> Page userFlags userModel userMsg
+findPage routes url notFoundPage =
     Parser.parse (Parser.oneOf routes) url
+        |> Maybe.withDefault notFoundPage
 
 
 view :
-    Page userFlags userModel userMsg
-    -> List (Routes userFlags userModel userMsg)
+    List (Routes userFlags userModel userMsg)
+    -> Page userFlags userModel userMsg
     -> Model userFlags userModel
     -> Document (Msg userMsg)
-view notFoundView routes model =
+view routes notFoundPage model =
     let
         page =
-            Maybe.withDefault
-                notFoundView
-                (findPage routes model.url)
+            findPage routes model.url notFoundPage
 
         { title, body } =
             page.view model.url model.flags model.userModel
